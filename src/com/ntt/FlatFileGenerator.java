@@ -9,6 +9,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,11 +24,11 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  * @author  M. Ziggiotti - NTT Data Spa - Rome, IT
- * @version 202606.231550
+ * @version 202606.241850
  */
 public class FlatFileGenerator  extends JFrame {
     
-    private static final String BUILD = "202606.231550";
+    private static final String BUILD = "202606.241850";
     private transient List<FileRecord> fileRecords = null;
     private final transient DateTimeFormatter df = DateTimeFormatter.ofPattern("yyMMdd");
 
@@ -41,6 +42,8 @@ public class FlatFileGenerator  extends JFrame {
 
     private transient JTextField tfFileName;
     private transient JButton btnGenera;
+    private transient JFileChooser fileChooser; 
+  
 
     /**
      * Constructor
@@ -59,7 +62,9 @@ public class FlatFileGenerator  extends JFrame {
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
-
+        fileChooser = new JFileChooser(new File(".").getAbsolutePath());
+        fileChooser.setDialogTitle("Seleziona dove salvare il file");
+        
         tabellaCampi.setRowHeight(22);
         tabellaCampi.setFont(cellFont);
         
@@ -100,10 +105,18 @@ public class FlatFileGenerator  extends JFrame {
         add(pannelloAzioni, BorderLayout.SOUTH);
 
         btnGenera.addActionListener(e -> generateFile());
+        
     }
     
 
     private void generateFile() {
+        fileChooser.setSelectedFile(new File(tfFileName.getText()));
+        int userSelection = fileChooser.showSaveDialog(this);
+        
+        if (userSelection == JFileChooser.CANCEL_OPTION) {
+            return;
+        }
+        tfFileName.setText( fileChooser.getSelectedFile().getName() );
         if (tabellaCampi.isEditing()) {
             tabellaCampi.getCellEditor().stopCellEditing();
         }
