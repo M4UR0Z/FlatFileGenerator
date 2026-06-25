@@ -20,15 +20,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import javax.swing.border.CompoundBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  * @author  M. Ziggiotti - NTT Data Spa - Rome, IT
- * @version 202606.241850
+ * @version 202606.251150
  */
 public class FlatFileGenerator  extends JFrame {
     
-    private static final String BUILD = "202606.241850";
+    private static boolean DEBUG = false;
+    
+    private static final String VERSION = "Ver. 1.0 - 202606.251150";
     private transient List<FileRecord> fileRecords = null;
     private final transient DateTimeFormatter df = DateTimeFormatter.ofPattern("yyMMdd");
 
@@ -40,8 +43,8 @@ public class FlatFileGenerator  extends JFrame {
     private final transient Font cellFont = new Font("Tahoma", Font.PLAIN, 12);
     private final transient Font headerFont = cellFont.deriveFont(Font.BOLD);
 
+    private transient JCheckBox cbAppend;
     private transient JTextField tfFileName;
-    private transient JButton btnGenera;
     private transient JFileChooser fileChooser; 
   
 
@@ -57,7 +60,9 @@ public class FlatFileGenerator  extends JFrame {
     }
 
     private void initGui() {
-        setTitle("CNOR Generator - ver. " + BUILD + " - NTTDATA, Rome");
+        debug("Initialing UI...");
+
+        setTitle("CNOR Generator - " + VERSION + " - NTTDATA, Rome");
         setSize(800, 650);
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -83,11 +88,15 @@ public class FlatFileGenerator  extends JFrame {
         JScrollPane scrollPane = new JScrollPane(tabellaCampi);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
+        cbAppend = new JCheckBox(" Append mode ");
+        cbAppend.setHorizontalTextPosition(SwingConstants.LEFT);
+        cbAppend.setFont(cellFont);
+
         tfFileName = new JTextField( createDefaultFileName() );
         tfFileName.setPreferredSize(new Dimension(270, 35));
         tfFileName.setFont(new Font("Courier new", Font.PLAIN, 12));
         
-        btnGenera = new JButton("Genera");
+        JButton btnGenera = new JButton("Genera");
         btnGenera.setPreferredSize(new Dimension(160, 35));
         btnGenera.setBackground(new Color(76, 175, 80));
         btnGenera.setForeground(Color.WHITE);
@@ -95,21 +104,25 @@ public class FlatFileGenerator  extends JFrame {
         btnGenera.setFocusPainted(false);
         
         JPanel pannelloAzioni = new JPanel();
-        
-        pannelloAzioni.add(new JLabel("Output file: "));
-        pannelloAzioni.add(tfFileName);
-        pannelloAzioni.add( Box.createHorizontalStrut(80) );
-        pannelloAzioni.add(btnGenera);
+            
+            pannelloAzioni.setBorder(new CompoundBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10), BorderFactory.createEtchedBorder()) );
+            pannelloAzioni.add(cbAppend);
+            pannelloAzioni.add( Box.createHorizontalStrut(20) );
+            pannelloAzioni.add(new JLabel("Output file: "));
+            pannelloAzioni.add(tfFileName);
+            pannelloAzioni.add( Box.createHorizontalStrut(20) );
+            pannelloAzioni.add(btnGenera);
 
         add(scrollPane, BorderLayout.CENTER);
         add(pannelloAzioni, BorderLayout.SOUTH);
 
         btnGenera.addActionListener(e -> generateFile());
-        
     }
     
 
     private void generateFile() {
+        debug("Generating flat file...");
+
         fileChooser.setSelectedFile(new File(tfFileName.getText()));
         int userSelection = fileChooser.showSaveDialog(this);
         
@@ -136,8 +149,8 @@ public class FlatFileGenerator  extends JFrame {
             String valoreFormattato = formattaLunghezzaFissa(valoreRaw, lunghezzaAttuale);
             rigaCompleta.append(valoreFormattato);
         }
-
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(tfFileName.getText(), false))) {
+        File fileChoosen = fileChooser.getSelectedFile();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileChoosen, cbAppend.isSelected()))) {
             writer.write(rigaCompleta.toString());
             writer.newLine();
 
@@ -145,7 +158,8 @@ public class FlatFileGenerator  extends JFrame {
                                           "Flat file successfully generated\nTotal row characters: " + rigaCompleta.length(),
                                           "Success", 
                                           JOptionPane.INFORMATION_MESSAGE);
-
+    
+            debug("Flat file successfully generated\nTotal row characters: " + rigaCompleta.length());
         }
         catch (IOException ex) {
             JOptionPane.showMessageDialog(this,
@@ -164,6 +178,8 @@ public class FlatFileGenerator  extends JFrame {
 
 
     private void loadFlatStructure()  {
+        debug("Loading record track file...");
+
         try (InputStream is = getClass().getResourceAsStream("/tracciato.txt")) {
             
             if (is == null) {
@@ -174,7 +190,7 @@ public class FlatFileGenerator  extends JFrame {
                AtomicInteger contatore = new AtomicInteger(1);
                 fileRecords =  reader.lines()
                                 .map(row -> {
-                                        System.out.println("Reading line #: " + contatore.getAndIncrement()); 
+                                        debug("Reading line #: " + contatore.getAndIncrement()); 
                                         return row.split(";", -1);
                                     }
                                 )
@@ -212,6 +228,10 @@ public class FlatFileGenerator  extends JFrame {
 
 
     public static void main(String[] args) {
+        DEBUG = (args.length > 0 && args[0].contains("-debug") );
+          
+        debug("Flat File Generator [" + VERSION + "] starting");
+
         SwingUtilities.invokeLater(() -> new FlatFileGenerator().setVisible(true));
     }
 
@@ -243,6 +263,13 @@ public class FlatFileGenerator  extends JFrame {
     }
 
 
+    public static void debug(String msg) {
+        if(DEBUG) {
+            System.out.println(msg); 
+        }
+    }
+
+        
     class FileRecord {
         String name;
         int length;
@@ -271,6 +298,6 @@ public class FlatFileGenerator  extends JFrame {
         public String getDefaultValue() {
             return defaultValue;
         }
-        
+
     }
 }
