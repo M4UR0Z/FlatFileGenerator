@@ -25,18 +25,18 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  * @author  M. Ziggiotti - NTT Data Spa - Rome, IT
- * @version 202606.251150
+ * @version 202606.260940
  */
 public class FlatFileGenerator  extends JFrame {
     
     private static boolean DEBUG = false;
     
-    private static final String VERSION = "Ver. 1.0 - 202606.251150";
+    private static final String VERSION = "Ver. 1.0 - 202606.260940";
     private transient List<FileRecord> fileRecords = null;
     private final transient DateTimeFormatter df = DateTimeFormatter.ofPattern("yyMMdd");
 
     // table header
-    private final transient String[] intestazioni = {"Nome Campo", "Offset", "Lunghezza", "Valore (Input)"};
+    private final transient String[] intestazioni = {"Field name", "Offset", "Length", "Value (Input)"};
     
     private final transient JTable tabellaCampi;
     private final transient DefaultTableModel modelloTabella;
@@ -189,6 +189,7 @@ public class FlatFileGenerator  extends JFrame {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8) ) ) {
                AtomicInteger contatore = new AtomicInteger(1);
                 fileRecords =  reader.lines()
+                                .filter(line -> !line.startsWith("#"))
                                 .map(row -> {
                                         debug("Reading line #: " + contatore.getAndIncrement()); 
                                         return row.split(";", -1);

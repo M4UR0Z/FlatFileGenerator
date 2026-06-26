@@ -1,3 +1,7 @@
+# Each line representing the following structure:
+# FIELD_NAME;POSITION;LENGTH;[DEFAULT_VALUE]
+# Lines starting oth '#' are comment
+# REMEMBER: If [DEFAULT_VALUE] is omitted, include a final ';' anyway
 CODI-MESS;0;3;NOR
 CATE-APPL;3;4;SCT0
 APPL-UTEN;7;6;SCT000
