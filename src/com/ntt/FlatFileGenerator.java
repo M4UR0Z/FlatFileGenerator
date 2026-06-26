@@ -25,13 +25,13 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  * @author  M. Ziggiotti - NTT Data Spa - Rome, IT
- * @version 202606.260940
+ * @version 202606.260950
  */
 public class FlatFileGenerator  extends JFrame {
     
     private static boolean DEBUG = false;
     
-    private static final String VERSION = "Ver. 1.0 - 202606.260940";
+    private static final String VERSION = "Ver. 1.0 - 202606.260950";
     private transient List<FileRecord> fileRecords = null;
     private final transient DateTimeFormatter df = DateTimeFormatter.ofPattern("yyMMdd");
 
@@ -120,15 +120,19 @@ public class FlatFileGenerator  extends JFrame {
     }
     
 
+    /**
+     * Shows a file dialog and generates the file if user press 'Save' button
+     */
     private void generateFile() {
-        debug("Generating flat file...");
-
         fileChooser.setSelectedFile(new File(tfFileName.getText()));
         int userSelection = fileChooser.showSaveDialog(this);
         
         if (userSelection == JFileChooser.CANCEL_OPTION) {
             return;
         }
+
+        debug("Generating flat file...");
+
         tfFileName.setText( fileChooser.getSelectedFile().getName() );
         if (tabellaCampi.isEditing()) {
             tabellaCampi.getCellEditor().stopCellEditing();
@@ -177,6 +181,9 @@ public class FlatFileGenerator  extends JFrame {
     }
 
 
+    /**
+     * Loads the 'tracciato.txt' flat structure file
+     */
     private void loadFlatStructure()  {
         debug("Loading record track file...");
 
