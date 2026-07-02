@@ -21,17 +21,19 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.swing.border.CompoundBorder;
+import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  * @author  M. Ziggiotti - NTT Data Spa - Rome, IT
- * @version 202606.260950
+ * @version 202607.021310
  */
 public class FlatFileGenerator  extends JFrame {
     
     private static boolean DEBUG = false;
+    private static boolean TEMPLATE_MODIFIED = false;
     
-    private static final String VERSION = "Ver. 1.0 - 202606.260950";
+    private static final String VERSION = "Ver. 1.0 - 202607.021310";
     private transient List<FileRecord> fileRecords = null;
     private final transient DateTimeFormatter df = DateTimeFormatter.ofPattern("yyMMdd");
 
@@ -69,21 +71,8 @@ public class FlatFileGenerator  extends JFrame {
         setLayout(new BorderLayout(10, 10));
         fileChooser = new JFileChooser(new File(".").getAbsolutePath());
         fileChooser.setDialogTitle("Seleziona dove salvare il file");
-        
-        tabellaCampi.setRowHeight(22);
-        tabellaCampi.setFont(cellFont);
-        
-        // Blocca lo spostamento delle colonne per sicurezza
-        tabellaCampi.getTableHeader().setReorderingAllowed(false);
 
-        tabellaCampi.getTableHeader().setFont(headerFont);
-        tabellaCampi.getColumnModel().getColumn(0).setMinWidth(150);
-        tabellaCampi.getColumnModel().getColumn(0).setMaxWidth(150);
-        tabellaCampi.getColumnModel().getColumn(1).setMinWidth(120);
-        tabellaCampi.getColumnModel().getColumn(1).setMaxWidth(120);
-        tabellaCampi.getColumnModel().getColumn(2).setMinWidth(120);
-        tabellaCampi.getColumnModel().getColumn(2).setMaxWidth(120);
-        tabellaCampi.getColumnModel().getColumn(3).setCellRenderer( createTableCellRenderer() );
+        initTable();
                 
         JScrollPane scrollPane = new JScrollPane(tabellaCampi);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -95,30 +84,47 @@ public class FlatFileGenerator  extends JFrame {
         tfFileName = new JTextField( createDefaultFileName() );
         tfFileName.setPreferredSize(new Dimension(270, 35));
         tfFileName.setFont(new Font("Courier new", Font.PLAIN, 12));
-        
-        JButton btnGenera = new JButton("Genera");
-        btnGenera.setPreferredSize(new Dimension(160, 35));
-        btnGenera.setBackground(new Color(76, 175, 80));
-        btnGenera.setForeground(Color.WHITE);
-        btnGenera.setFont(headerFont);
-        btnGenera.setFocusPainted(false);
-        
-        JPanel pannelloAzioni = new JPanel();
-            
-            pannelloAzioni.setBorder(new CompoundBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10), BorderFactory.createEtchedBorder()) );
-            pannelloAzioni.add(cbAppend);
-            pannelloAzioni.add( Box.createHorizontalStrut(20) );
-            pannelloAzioni.add(new JLabel("Output file: "));
-            pannelloAzioni.add(tfFileName);
-            pannelloAzioni.add( Box.createHorizontalStrut(20) );
-            pannelloAzioni.add(btnGenera);
+
+        JPanel commandPanel = createCommandPanel();
 
         add(scrollPane, BorderLayout.CENTER);
-        add(pannelloAzioni, BorderLayout.SOUTH);
+        add(commandPanel, BorderLayout.SOUTH);
 
-        btnGenera.addActionListener(e -> generateFile());
     }
     
+
+    /**
+     * Creates command panels, putting it at the bottom
+     * @return 
+     */
+    private JPanel createCommandPanel() {
+        JButton btnGenera = new JButton("Generate");
+            btnGenera.setPreferredSize(new Dimension(160, 35));
+            btnGenera.setBackground(new Color(76, 175, 80));
+            btnGenera.setForeground(Color.WHITE);
+            btnGenera.setFont(headerFont);
+            btnGenera.setFocusPainted(false);
+            btnGenera.addActionListener(e -> generateFile());
+        
+        JButton reloadTemplate = new JButton();
+            reloadTemplate.setToolTipText("Reloads template ad its defaults");
+            reloadTemplate.setIcon(new ImageIcon(IconLibrary.SEARCH_ICON));
+            reloadTemplate.addActionListener(e -> reloadTemplate() );
+
+        // Command panel
+        JPanel commandPanel = new JPanel();
+            commandPanel.setBorder(new CompoundBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10), BorderFactory.createEtchedBorder()) );
+            commandPanel.add(reloadTemplate);
+            commandPanel.add(cbAppend);
+            commandPanel.add( Box.createHorizontalStrut(20) );
+            commandPanel.add(new JLabel("Output file: "));
+            commandPanel.add(tfFileName);
+            commandPanel.add( Box.createHorizontalStrut(20) );
+            commandPanel.add(btnGenera);
+            
+        return commandPanel;
+    }
+
 
     /**
      * Shows a file dialog and generates the file if user press 'Save' button
@@ -153,6 +159,7 @@ public class FlatFileGenerator  extends JFrame {
             String valoreFormattato = formattaLunghezzaFissa(valoreRaw, lunghezzaAttuale);
             rigaCompleta.append(valoreFormattato);
         }
+        
         File fileChoosen = fileChooser.getSelectedFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileChoosen, cbAppend.isSelected()))) {
             writer.write(rigaCompleta.toString());
@@ -212,6 +219,24 @@ public class FlatFileGenerator  extends JFrame {
     }
 
     
+    private void reloadTemplate() {
+        if(TEMPLATE_MODIFIED) {
+            int choose = JOptionPane.showConfirmDialog(this, 
+                                                       "Some values were updated. Reload template and lost changes ?", 
+                                                       "Template modified", 
+                                                       JOptionPane.WARNING_MESSAGE);
+            if(choose == JOptionPane.CANCEL_OPTION) {
+                return;
+            }
+        }
+
+        TEMPLATE_MODIFIED = false;
+        loadFlatStructure();
+        tabellaCampi.setModel( createTableModel() );
+        initTable();
+    }
+
+    
     private DefaultTableCellRenderer createTableCellRenderer() {
         Font fontSpeciale = new Font("Tahoma", Font.BOLD, 12);
         return  new DefaultTableCellRenderer() {
@@ -237,12 +262,11 @@ public class FlatFileGenerator  extends JFrame {
 
     public static void main(String[] args) {
         DEBUG = (args.length > 0 && args[0].contains("-debug") );
-          
         debug("Flat File Generator [" + VERSION + "] starting");
-
         SwingUtilities.invokeLater(() -> new FlatFileGenerator().setVisible(true));
     }
 
+    
     private DefaultTableModel createTableModel() {
             DefaultTableModel tableModel =  new DefaultTableModel(intestazioni, 0) {
             @Override
@@ -276,6 +300,37 @@ public class FlatFileGenerator  extends JFrame {
             System.out.println(msg); 
         }
     }
+
+    
+    /**
+     * Initializes some table behavior
+     */
+    private void initTable() {
+                tabellaCampi.setRowHeight(22);
+        tabellaCampi.setFont(cellFont);
+        
+        // Blocca lo spostamento delle colonne per sicurezza
+        tabellaCampi.getTableHeader().setReorderingAllowed(false);
+
+        tabellaCampi.getTableHeader().setFont(headerFont);
+        tabellaCampi.getColumnModel().getColumn(0).setMinWidth(150);
+        tabellaCampi.getColumnModel().getColumn(0).setMaxWidth(150);
+        tabellaCampi.getColumnModel().getColumn(1).setMinWidth(120);
+        tabellaCampi.getColumnModel().getColumn(1).setMaxWidth(120);
+        tabellaCampi.getColumnModel().getColumn(2).setMinWidth(120);
+        tabellaCampi.getColumnModel().getColumn(2).setMaxWidth(120);
+        tabellaCampi.getColumnModel().getColumn(3).setCellRenderer( createTableCellRenderer() );
+        tabellaCampi.getModel().addTableModelListener((TableModelEvent e) -> {
+            // Intercepts just cell's UPDATE event
+            if (e.getType() == TableModelEvent.UPDATE) {
+                debug( String.format("Cell updated at [row, column]: %d, %d", e.getFirstRow(), e.getColumn() ));
+                TEMPLATE_MODIFIED = true;
+                System.out.println("Cell updated");
+            }
+        });
+
+    }
+
 
         
     class FileRecord {
