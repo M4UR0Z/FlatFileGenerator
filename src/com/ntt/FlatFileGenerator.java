@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.swing.border.CompoundBorder;
@@ -26,12 +27,12 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  * @author  M. Ziggiotti - NTT Data Spa - Rome, IT
- * @version 202607.021310
+ * @version 202607.311140
  */
 public class FlatFileGenerator  extends JFrame {
     
     private static boolean DEBUG = false;
-    private static boolean TEMPLATE_MODIFIED = false;
+    private static AtomicBoolean TEMPLATE_MODIFIED = new AtomicBoolean(false);
     
     private static final String VERSION = "Ver. 1.0 - 202607.021310";
     private transient List<FileRecord> fileRecords = null;
@@ -41,10 +42,10 @@ public class FlatFileGenerator  extends JFrame {
     private final transient String[] intestazioni = {"Field name", "Offset", "Length", "Value (Input)"};
     
     private final transient JTable tabellaCampi;
-    private final transient DefaultTableModel modelloTabella;
     private final transient Font cellFont = new Font("Tahoma", Font.PLAIN, 12);
     private final transient Font headerFont = cellFont.deriveFont(Font.BOLD);
 
+    private transient DefaultTableModel modelloTabella;
     private transient JCheckBox cbAppend;
     private transient JTextField tfFileName;
     private transient JFileChooser fileChooser; 
@@ -108,7 +109,7 @@ public class FlatFileGenerator  extends JFrame {
         
         JButton reloadTemplate = new JButton();
             reloadTemplate.setToolTipText("Reloads template ad its defaults");
-            reloadTemplate.setIcon(new ImageIcon(IconLibrary.SEARCH_ICON));
+            reloadTemplate.setIcon(new ImageIcon(IconLibrary.REFRESH));
             reloadTemplate.addActionListener(e -> reloadTemplate() );
 
         // Command panel
@@ -220,7 +221,7 @@ public class FlatFileGenerator  extends JFrame {
 
     
     private void reloadTemplate() {
-        if(TEMPLATE_MODIFIED) {
+        if(TEMPLATE_MODIFIED.get()) {
             int choose = JOptionPane.showConfirmDialog(this, 
                                                        "Some values were updated. Reload template and lost changes ?", 
                                                        "Template modified", 
@@ -230,9 +231,10 @@ public class FlatFileGenerator  extends JFrame {
             }
         }
 
-        TEMPLATE_MODIFIED = false;
+        TEMPLATE_MODIFIED.set(false);
         loadFlatStructure();
-        tabellaCampi.setModel( createTableModel() );
+        modelloTabella = createTableModel();
+        tabellaCampi.setModel( modelloTabella );
         initTable();
     }
 
@@ -306,7 +308,7 @@ public class FlatFileGenerator  extends JFrame {
      * Initializes some table behavior
      */
     private void initTable() {
-                tabellaCampi.setRowHeight(22);
+        tabellaCampi.setRowHeight(22);
         tabellaCampi.setFont(cellFont);
         
         // Blocca lo spostamento delle colonne per sicurezza
@@ -324,8 +326,8 @@ public class FlatFileGenerator  extends JFrame {
             // Intercepts just cell's UPDATE event
             if (e.getType() == TableModelEvent.UPDATE) {
                 debug( String.format("Cell updated at [row, column]: %d, %d", e.getFirstRow(), e.getColumn() ));
-                TEMPLATE_MODIFIED = true;
-                System.out.println("Cell updated");
+                TEMPLATE_MODIFIED.set(true);
+                debug("Cell updated");
             }
         });
 
